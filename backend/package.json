@@ -15,7 +15,8 @@
     "seed": "node src/db/seed.js",
     "db:reset": "npm run migrate && npm run seed",
     "docker:build": "docker build -t gis-net-backend .",
-    "docker:run": "docker run -p 4000:4000 gis-net-backend"
+    "docker:run": "docker run -p 4000:4000 gis-net-backend",
+    "npm-all": "cd ../frontend && npm install && cd ../backend && npm install"
   },
   "keywords": [
     "gis",

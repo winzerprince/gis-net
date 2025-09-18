@@ -41,7 +41,8 @@
     "format": "prettier --write src/**/*.{js,jsx,css,scss}",
     "analyze": "npm run build && npx bundle-analyzer build/static/js/*.js",
     "docker:build": "docker build -t gis-net-frontend .",
-    "docker:run": "docker run -p 3000:3000 gis-net-frontend"
+    "docker:run": "docker run -p 3000:3000 gis-net-frontend",
+    "npm-all": "cd ../frontend && npm install && cd ../backend && npm install"
   },
   "devDependencies": {
     "react-scripts": "5.0.1",
