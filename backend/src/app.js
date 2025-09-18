@@ -25,11 +25,12 @@ const logger = require('./services/logger');
 const db = require('./db/connection');
 const migrationManager = require('./db/migrate');
 
-// Import route modules (will be created in next phase)
-// const authRoutes = require('./routes/auth');
-// const incidentRoutes = require('./routes/incidents');
-// const analysisRoutes = require('./routes/analysis');
-// const healthRoutes = require('./routes/health');
+// Import route modules
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+// const incidentRoutes = require('./routes/incidents'); // Will be created in Phase 3
+// const analysisRoutes = require('./routes/analysis'); // Will be created in Phase 4
+// const healthRoutes = require('./routes/health'); // Will be created in Phase 4
 
 class ExpressApp {
   constructor() {
@@ -265,8 +266,11 @@ class ExpressApp {
       });
     });
 
-    // Routes will be added here in subsequent phases
-    // this.app.use('/api/auth', authRoutes);
+    // Authentication and user management routes
+    this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/users', userRoutes);
+    
+    // Routes to be added in subsequent phases
     // this.app.use('/api/incidents', incidentRoutes);
     // this.app.use('/api/analysis', analysisRoutes);
 

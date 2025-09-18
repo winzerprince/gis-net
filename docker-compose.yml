@@ -33,8 +33,8 @@ services:
 
     environment:
       # Database configuration
-      POSTGRES_DB: trafficdb
-      POSTGRES_USER: postgres
+      POSTGRES_DB: beehive
+      POSTGRES_USER: beekeeper
       POSTGRES_PASSWORD: password
 
       # PostGIS configuration
@@ -56,7 +56,7 @@ services:
       - gis-net-network
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d trafficdb"]
+      test: ["CMD-SHELL", "pg_isready -U beekeeper -d beehive"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -78,7 +78,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 4000
-      DATABASE_URL: postgresql://postgres:password@db:5432/trafficdb
+      DATABASE_URL: postgresql://beekeeper:password@db:5432/beehive
       JWT_SECRET: development_secret_change_in_production
       CORS_ORIGIN: http://localhost:3000
       NOMINATIM_BASE_URL: https://nominatim.openstreetmap.org
