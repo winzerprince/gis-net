@@ -1,31 +1,30 @@
 /**
  * ==================================================
- * GIS-NET SERVER ENTRY POINT
- * Real-Time Traffic Incident Reporting System
+ * HTTP SERVER AND SOCKET.IO INITIALIZATION
+ * Production-Ready Server Startup with Real-Time Features
  * ==================================================
  * 
- * Main server file that orchestrates:
- * - Express application initialization
- * - Socket.io real-time communication
- * - Database connection management
- * - Graceful shutdown handling
- * - Environment configuration
+ * This module initializes:
+ * 1. HTTP server with Express.js application
+ * 2. Socket.io for real-time communications
+ * 3. Database connections and migrations
+ * 4. Graceful shutdown handling
+ * 5. Environment-specific configurations
  */
 
 require('dotenv').config();
 
 const http = require('http');
-const { Server } = require('socket.io');
 const ExpressApp = require('./app');
 const logger = require('./services/logger');
 const db = require('./db/connection');
 
-class GISNetServer {
+class Server {
   constructor() {
-    this.port = process.env.PORT || 4000;
+    this.expressApp = null;
     this.server = null;
     this.io = null;
-    this.expressApp = new ExpressApp();
+    this.port = process.env.PORT || 4000;
   }
 
   /**
@@ -33,187 +32,42 @@ class GISNetServer {
    */
   async start() {
     try {
-      logger.info('🚀 Starting GIS-NET Server...');
-      
-      // Initialize database first
+      logger.info('🚀 Starting GIS-NET Backend Server...');
+      logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`🌐 Port: ${this.port}`);
+
+      // Initialize Express application
+      this.expressApp = new ExpressApp();
       await this.expressApp.initializeDatabase();
       
       // Create HTTP server
       this.server = http.createServer(this.expressApp.getApp());
+
+      // Configure Socket.io for real-time incident updates (Phase 3)
+      const { configureSocketIO } = require('./services/socket');
+      const authService = require('./services/auth');
       
-      // Setup Socket.io
-      this.setupSocketIO();
+      this.io = configureSocketIO(this.server, authService);
       
-      // Start listening
+      // Inject Socket.io into the Express app
+      this.expressApp.setSocketIO(this.io);
+      
+      // Make Socket.io available globally for incident broadcasting
+      global.io = this.io;
+
+      // Start server
       await this.listen();
-      
+
       // Setup graceful shutdown
       this.setupGracefulShutdown();
-      
-      logger.info('🎉 GIS-NET Server started successfully!');
+
+      logger.info('✅ GIS-NET Backend Server started successfully');
+      logger.info('🔌 Socket.io real-time features enabled');
       this.logServerInfo();
       
     } catch (error) {
-      logger.error('💥 Server startup failed:', error.message);
+      logger.error('❌ Failed to start server:', error);
       process.exit(1);
-    }
-  }
-
-  /**
-   * Configure Socket.io for real-time communication
-   */
-  setupSocketIO() {
-    this.io = new Server(this.server, {
-      cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-        methods: ['GET', 'POST'],
-        credentials: true,
-      },
-      
-      // Connection settings
-      pingTimeout: 60000,
-      pingInterval: 25000,
-      
-      // Transport settings
-      transports: ['websocket', 'polling'],
-      
-      // Adapter configuration for scaling (can be Redis in production)
-      adapter: undefined, // Will use memory adapter by default
-    });
-
-    // Connection handling
-    this.io.on('connection', (socket) => {
-      const clientId = socket.id;
-      const clientIP = socket.handshake.address;
-      
-      logger.info(`🔌 Client connected: ${clientId} from ${clientIP}`);
-
-      // Handle authentication
-      socket.on('authenticate', (data) => {
-        try {
-          // Authentication logic will be implemented in auth phase
-          socket.userId = data.userId;
-          socket.join('authenticated');
-          
-          socket.emit('authenticated', {
-            success: true,
-            message: 'Successfully authenticated',
-          });
-          
-          logger.info(`🔐 Client authenticated: ${clientId} (User: ${data.userId})`);
-        } catch (error) {
-          socket.emit('auth_error', {
-            success: false,
-            message: 'Authentication failed',
-          });
-        }
-      });
-
-      // Handle incident subscriptions
-      socket.on('subscribe_incidents', (data) => {
-        try {
-          const { bounds, types } = data;
-          
-          // Join room for specific geographic area
-          const roomName = `incidents_${bounds.north}_${bounds.south}_${bounds.east}_${bounds.west}`;
-          socket.join(roomName);
-          
-          socket.emit('subscribed', {
-            success: true,
-            room: roomName,
-            message: 'Subscribed to incident updates',
-          });
-          
-          logger.debug(`📍 Client subscribed to incidents: ${clientId} (Room: ${roomName})`);
-        } catch (error) {
-          socket.emit('subscription_error', {
-            success: false,
-            message: 'Failed to subscribe to incidents',
-          });
-        }
-      });
-
-      // Handle incident reporting via Socket.io
-      socket.on('report_incident', (data) => {
-        try {
-          // Validate user is authenticated
-          if (!socket.userId) {
-            socket.emit('incident_error', {
-              success: false,
-              message: 'Authentication required',
-            });
-            return;
-          }
-
-          // Add reporter information
-          data.reportedBy = socket.userId;
-          
-          // Broadcast to relevant geographic area (will implement in incident service)
-          this.broadcastNewIncident(data);
-          
-          logger.info(`📋 Incident reported via Socket.io: ${clientId} (User: ${socket.userId})`);
-        } catch (error) {
-          socket.emit('incident_error', {
-            success: false,
-            message: 'Failed to report incident',
-          });
-        }
-      });
-
-      // Handle disconnection
-      socket.on('disconnect', (reason) => {
-        logger.info(`🔌 Client disconnected: ${clientId} (Reason: ${reason})`);
-      });
-
-      // Handle errors
-      socket.on('error', (error) => {
-        logger.error(`❌ Socket error for ${clientId}:`, error.message);
-      });
-    });
-
-    // Log Socket.io server status
-    logger.info('🔌 Socket.io server configured');
-  }
-
-  /**
-   * Broadcast new incident to relevant clients
-   */
-  broadcastNewIncident(incident) {
-    try {
-      // Broadcast to all clients (will be refined with geographic filtering)
-      this.io.emit('new_incident', {
-        type: 'new_incident',
-        data: incident,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Also broadcast to authenticated users room
-      this.io.to('authenticated').emit('incident_notification', {
-        type: 'notification',
-        message: `New ${incident.type} reported`,
-        incident: incident,
-      });
-
-      logger.debug('📡 New incident broadcasted to clients');
-    } catch (error) {
-      logger.error('❌ Failed to broadcast incident:', error.message);
-    }
-  }
-
-  /**
-   * Broadcast incident update to relevant clients
-   */
-  broadcastIncidentUpdate(incident) {
-    try {
-      this.io.emit('incident_updated', {
-        type: 'incident_updated',
-        data: incident,
-        timestamp: new Date().toISOString(),
-      });
-
-      logger.debug(`📡 Incident update broadcasted: ${incident.id}`);
-    } catch (error) {
-      logger.error('❌ Failed to broadcast incident update:', error.message);
     }
   }
 
@@ -307,8 +161,8 @@ class GISNetServer {
 
 // Start server if this file is run directly
 if (require.main === module) {
-  const server = new GISNetServer();
+  const server = new Server();
   server.start();
 }
 
-module.exports = GISNetServer;
+module.exports = Server;

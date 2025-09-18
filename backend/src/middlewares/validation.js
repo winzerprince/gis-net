@@ -5,9 +5,29 @@
  * ==================================================
  * 
  * This module defines comprehensive input validation schemas for all
- * authentication and user management endpoints in the GIS-NET system.
- * 
- * VALIDATION CATEGORIES:
+ * authentication and user management endpoints in the GIS-NET s  // Validation schemas
+  schemas: {
+    registrationSchema,
+    loginSchema,
+    passwordResetRequestSchema,
+    passwordResetSchema,
+    passwordChangeSchema,
+    profileUpdateSchema,
+    emailVerificationSchema,
+    refreshTokenSchema,
+    adminUserUpdateSchema,
+  },
+  
+  // Incident validation (will be added in next update)
+  validateIncidentCreation: (req, res, next) => next(), // Placeholder
+  validateIncidentUpdate: (req, res, next) => next(), // Placeholder
+  validateSpatialSearch: (req, res, next) => next(), // Placeholder
+  validateClusterParams: (req, res, next) => next(), // Placeholder
+  validateHeatmapParams: (req, res, next) => next(), // Placeholder
+  
+  // Utility function
+  validate,
+};LIDATION CATEGORIES:
  * - User Registration: Username, email, password strength validation
  * - User Login: Credential validation with security measures
  * - Password Management: Reset, change, strength requirements

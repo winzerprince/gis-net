@@ -42,12 +42,11 @@ const {
   validatePasswordChange,
 } = require('../middlewares/validation');
 const DatabaseConnection = require('../db/connection');
-const PasswordSecurityService = require('../services/password');
+const passwordService = require('../services/password');
 const logger = require('../services/logger');
 
 const router = express.Router();
-const db = new DatabaseConnection();
-const passwordService = new PasswordSecurityService(db);
+const db = require('../db/connection');
 
 /**
  * @route   GET /api/users/profile

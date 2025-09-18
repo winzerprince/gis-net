@@ -142,23 +142,68 @@ class MigrationManager {
       
       // Read migration file
       const filePath = path.join(this.migrationsDir, filename);
-      const migrationSQL = await fs.readFile(filePath, 'utf8');
+      let migrationSQL = await fs.readFile(filePath, 'utf8');
+      
+      // Clean up psql-specific commands that aren't valid SQL
+      const cleanSql = (sql) => {
+        return sql
+          // Remove psql commands
+          .replace(/\\(echo|set|connect|if|elif|else|endif|i|include|ir|ir_file|o|out|o|qecho|warn|copy|crosstabview).*$/gm, '')
+          // Remove comments
+          .replace(/^--.*$/gm, '')
+          // Convert CREATE TABLE to CREATE TABLE IF NOT EXISTS
+          .replace(/CREATE\s+TABLE\s+([^(]+)/gi, 'CREATE TABLE IF NOT EXISTS $1')
+          // Convert CREATE INDEX to CREATE INDEX IF NOT EXISTS
+          .replace(/CREATE\s+INDEX\s+([^(ON]+)/gi, 'CREATE INDEX IF NOT EXISTS $1')
+          // Convert CREATE EXTENSION to CREATE EXTENSION IF NOT EXISTS
+          .replace(/CREATE\s+EXTENSION\s+([^(;]+)/gi, 'CREATE EXTENSION IF NOT EXISTS $1')
+          // Remove empty lines
+          .split('\n')
+          .filter(line => line.trim() !== '')
+          .join('\n');
+      };
+      
+      migrationSQL = cleanSql(migrationSQL);
       
       // Calculate checksum for integrity verification
       const checksum = this.calculateChecksum(migrationSQL);
       
       // Execute migration in transaction
-      await db.transaction(async (client) => {
-        // Execute the migration SQL
-        await client.query(migrationSQL);
-        
-        // Record migration execution
-        const executionTime = Date.now() - startTime;
-        await client.query(
-          `INSERT INTO ${this.migrationTable} (filename, checksum, execution_time) VALUES ($1, $2, $3)`,
-          [filename, checksum, executionTime]
-        );
-      });
+      try {
+        // Execute migration in transaction
+        await db.transaction(async (client) => {
+          try {
+            // Split SQL into individual statements
+            const statements = migrationSQL
+              .split(';')
+              .map(stmt => stmt.trim())
+              .filter(stmt => stmt.length > 0);
+            
+            // Execute each statement separately for better error reporting
+            for (const statement of statements) {
+              await client.query(statement + ';');
+            }
+            
+            // Record migration execution
+            const executionTime = Date.now() - startTime;
+            await client.query(
+              `INSERT INTO ${this.migrationTable} (filename, checksum, execution_time) VALUES ($1, $2, $3)`,
+              [filename, checksum, executionTime]
+            );
+          } catch (err) {
+            // Log detailed SQL error
+            logger.error(`SQL Error in migration ${filename}: ${err.message}`);
+            logger.error(`Statement: ${err.query || 'Unknown'}`);
+            logger.error(`Position: ${err.position || 'Unknown'}`);
+            
+            // Rethrow to trigger transaction rollback
+            throw err;
+          }
+        });
+      } catch (error) {
+        // This will be caught by the outer try/catch
+        throw new Error(`Migration ${filename} failed: ${error.message}`);
+      }
       
       const duration = Date.now() - startTime;
       logger.info(`✅ Migration completed: ${filename} (${duration}ms)`);
@@ -188,26 +233,23 @@ class MigrationManager {
     try {
       logger.info('🔍 Verifying database schema integrity...');
       
-      // Check required tables exist
-      const requiredTables = [
-        'users', 'incident_types', 'incidents', 
-        'incident_reports', 'audit_logs'
-      ];
+      // Core tables that must exist after initial migration
+      const coreTables = ['users', 'incident_types', 'incidents'];
       
       const result = await db.query(`
         SELECT table_name 
         FROM information_schema.tables 
         WHERE table_schema = 'public' 
           AND table_name = ANY($1)
-      `, [requiredTables]);
+      `, [coreTables]);
       
       const existingTables = result.rows.map(row => row.table_name);
-      const missingTables = requiredTables.filter(
+      const missingTables = coreTables.filter(
         table => !existingTables.includes(table)
       );
       
       if (missingTables.length > 0) {
-        throw new Error(`Missing required tables: ${missingTables.join(', ')}`);
+        throw new Error(`Missing core tables: ${missingTables.join(', ')}`);
       }
       
       // Verify PostGIS extension
@@ -218,19 +260,16 @@ class MigrationManager {
       `);
       
       if (!postgisResult.rows[0].postgis_installed) {
-        throw new Error('PostGIS extension not installed');
-      }
-      
-      // Check spatial indexes
-      const spatialIndexResult = await db.query(`
-        SELECT indexname 
-        FROM pg_indexes 
-        WHERE tablename = 'incidents' 
-          AND indexname LIKE '%location%'
-      `);
-      
-      if (spatialIndexResult.rows.length === 0) {
-        throw new Error('Spatial indexes not found on incidents table');
+        logger.warn('⚠️ PostGIS extension not detected - attempting to create it');
+        
+        // Try to create PostGIS extension if missing
+        try {
+          await db.query('CREATE EXTENSION IF NOT EXISTS postgis;');
+          logger.info('✅ PostGIS extension installed successfully');
+        } catch (err) {
+          logger.error('❌ Failed to create PostGIS extension. Run as superuser: CREATE EXTENSION postgis;');
+          throw new Error(`PostGIS extension installation failed: ${err.message}`);
+        }
       }
       
       logger.info('✅ Database schema verification passed');

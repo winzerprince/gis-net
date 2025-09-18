@@ -30,7 +30,7 @@ class DatabaseConnection {
     try {
       // Create connection pool with optimized settings
       this.pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
+        connectionString: process.env.DATABASE_URL || 'postgresql://winzer:beekeeper@localhost:5432/beehive',
         
         // Connection pool configuration
         max: process.env.NODE_ENV === 'production' ? 20 : 10, // Maximum connections

@@ -24,20 +24,35 @@ require('express-async-errors');
 const logger = require('./services/logger');
 const db = require('./db/connection');
 const migrationManager = require('./db/migrate');
+const { authenticateToken } = require('./middlewares/auth');
 
 // Import route modules
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-// const incidentRoutes = require('./routes/incidents'); // Will be created in Phase 3
+const incidentRoutes = require('./routes/incidents'); // Phase 3 - Incident Management
 // const analysisRoutes = require('./routes/analysis'); // Will be created in Phase 4
 // const healthRoutes = require('./routes/health'); // Will be created in Phase 4
 
 class ExpressApp {
   constructor() {
     this.app = express();
+    this.io = null; // To hold Socket.io instance
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
+  }
+
+  /**
+   * Injects the Socket.IO instance into the relevant parts of the application.
+   * @param {object} io - The Socket.IO server instance.
+   */
+  setSocketIO(io) {
+    this.io = io;
+    // Inject the io instance into the incident routes module
+    if (incidentRoutes.setSocketIO) {
+      incidentRoutes.setSocketIO(io);
+      logger.info('🔌 Socket.io instance injected into incident routes');
+    }
   }
 
   /**
@@ -268,10 +283,12 @@ class ExpressApp {
 
     // Authentication and user management routes
     this.app.use('/api/auth', authRoutes);
-    this.app.use('/api/users', userRoutes);
+    this.app.use('/api/users', authenticateToken, userRoutes);
+    
+    // Incident management routes (Phase 3)
+    this.app.use('/api/incidents', incidentRoutes.router);
     
     // Routes to be added in subsequent phases
-    // this.app.use('/api/incidents', incidentRoutes);
     // this.app.use('/api/analysis', analysisRoutes);
 
     // 404 handler for unknown routes

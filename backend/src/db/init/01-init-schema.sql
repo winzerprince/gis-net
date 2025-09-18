@@ -14,7 +14,7 @@
 -- - Performance optimizations
 -- - Data integrity constraints
 
-\echo 'Starting GIS-NET database initialization...'
+-- Starting GIS-NET database initialization...
 
 -- ==================================================
 -- EXTENSIONS & BASIC SETUP
@@ -22,19 +22,18 @@
 
 -- Enable PostGIS extension for spatial operations
 CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXISTS postgis_topology;
 
 -- Create custom types for enhanced data integrity
 CREATE TYPE user_role AS ENUM ('user', 'admin', 'moderator');
 CREATE TYPE incident_status AS ENUM ('active', 'resolved', 'in_progress', 'false_report');
 
-\echo 'Extensions and types created successfully'
+-- Extensions and types created successfully
 
 -- ==================================================
 -- USER AUTHENTICATION SYSTEM
 -- ==================================================
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -62,18 +61,18 @@ CREATE TABLE users (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_created_at ON users(created_at);
-CREATE INDEX idx_users_active ON users(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS IF NOT EXISTS idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS IF NOT EXISTS idx_users_active ON users(is_active) WHERE is_active = true;
 
-\echo 'Users table created with indexes'
+-- Users table created with indexes
 
 -- ==================================================
 -- INCIDENT CATEGORIZATION SYSTEM
 -- ==================================================
 
-CREATE TABLE incident_types (
+CREATE TABLE IF NOT EXISTS incident_types (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
@@ -89,15 +88,15 @@ CREATE TABLE incident_types (
 );
 
 -- Index for active incident types
-CREATE INDEX idx_incident_types_active ON incident_types(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_incident_types_active ON incident_types(is_active) WHERE is_active = true;
 
-\echo 'Incident types table created'
+-- Incident types table created
 
 -- ==================================================
 -- MAIN INCIDENTS TABLE WITH SPATIAL DATA
 -- ==================================================
 
-CREATE TABLE incidents (
+CREATE TABLE IF NOT EXISTS incidents (
     id SERIAL PRIMARY KEY,
     type_id INTEGER REFERENCES incident_types(id) NOT NULL,
     reported_by INTEGER REFERENCES users(id) NOT NULL,
@@ -151,32 +150,32 @@ CREATE TABLE incidents (
 -- ==================================================
 
 -- Primary spatial index using GiST
-CREATE INDEX idx_incidents_location ON incidents USING GIST(location);
+CREATE INDEX IF NOT EXISTS idx_incidents_location ON incidents USING GIST(location);
 
 -- Compound indexes for common query patterns
-CREATE INDEX idx_incidents_type_location ON incidents USING GIST(type_id, location);
-CREATE INDEX idx_incidents_status_location ON incidents USING GIST(status, location) WHERE status = 'active';
-CREATE INDEX idx_incidents_created_location ON incidents USING GIST(created_at, location);
+CREATE INDEX IF NOT EXISTS idx_incidents_type_location ON incidents USING GIST(type_id, location);
+CREATE INDEX IF NOT EXISTS idx_incidents_status_location ON incidents USING GIST(status, location) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_incidents_created_location ON incidents USING GIST(created_at, location);
 
 -- Performance indexes for filtering
-CREATE INDEX idx_incidents_type_id ON incidents(type_id);
-CREATE INDEX idx_incidents_reported_by ON incidents(reported_by);
-CREATE INDEX idx_incidents_status ON incidents(status);
-CREATE INDEX idx_incidents_severity ON incidents(severity);
-CREATE INDEX idx_incidents_created_at ON incidents(created_at DESC);
-CREATE INDEX idx_incidents_verified ON incidents(verified) WHERE verified = true;
+CREATE INDEX IF NOT EXISTS idx_incidents_type_id ON incidents(type_id);
+CREATE INDEX IF NOT EXISTS idx_incidents_reported_by ON incidents(reported_by);
+CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
+CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents(severity);
+CREATE INDEX IF NOT EXISTS idx_incidents_created_at ON incidents(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_incidents_verified ON incidents(verified) WHERE verified = true;
 
 -- Partial indexes for active incidents (most common queries)
-CREATE INDEX idx_incidents_active ON incidents(created_at DESC) WHERE status = 'active';
-CREATE INDEX idx_incidents_active_location ON incidents USING GIST(location) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_incidents_active ON incidents(created_at DESC) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_incidents_active_location ON incidents USING GIST(location) WHERE status = 'active';
 
-\echo 'Incidents table created with comprehensive indexing'
+-- Incidents table created with comprehensive indexing
 
 -- ==================================================
 -- INCIDENT REPORTS & COMMUNITY VALIDATION
 -- ==================================================
 
-CREATE TABLE incident_reports (
+CREATE TABLE IF NOT EXISTS incident_reports (
     id SERIAL PRIMARY KEY,
     incident_id INTEGER REFERENCES incidents(id) ON DELETE CASCADE,
     reported_by INTEGER REFERENCES users(id) NOT NULL,
@@ -188,16 +187,16 @@ CREATE TABLE incident_reports (
     UNIQUE(incident_id, reported_by, report_type)
 );
 
-CREATE INDEX idx_incident_reports_incident ON incident_reports(incident_id);
-CREATE INDEX idx_incident_reports_user ON incident_reports(reported_by);
+CREATE INDEX IF NOT EXISTS idx_incident_reports_incident ON incident_reports(incident_id);
+CREATE INDEX IF NOT EXISTS idx_incident_reports_user ON incident_reports(reported_by);
 
-\echo 'Incident reports table created'
+-- Incident reports table created
 
 -- ==================================================
 -- AUDIT LOG FOR SECURITY & TRACKING
 -- ==================================================
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     table_name VARCHAR(50) NOT NULL,
     record_id INTEGER NOT NULL,
@@ -210,17 +209,18 @@ CREATE TABLE audit_logs (
     user_agent TEXT
 );
 
-CREATE INDEX idx_audit_logs_table_record ON audit_logs(table_name, record_id);
-CREATE INDEX idx_audit_logs_changed_by ON audit_logs(changed_by);
-CREATE INDEX idx_audit_logs_changed_at ON audit_logs(changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_table_record ON audit_logs(table_name, record_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_changed_by ON audit_logs(changed_by);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_changed_at ON audit_logs(changed_at DESC);
 
-\echo 'Audit logs table created'
+-- Audit logs table created
 
 -- ==================================================
 -- SPATIAL FUNCTIONS & VIEWS
 -- ==================================================
 
 -- Create a materialized view for incident clustering
+DROP MATERIALIZED VIEW IF EXISTS incident_clusters CASCADE;
 CREATE MATERIALIZED VIEW incident_clusters AS
 SELECT 
     ST_ClusterKMeans(location, 10) OVER() as cluster_id,
@@ -236,9 +236,9 @@ WHERE status = 'active'
 GROUP BY cluster_id;
 
 CREATE UNIQUE INDEX idx_incident_clusters_id ON incident_clusters(cluster_id);
-CREATE INDEX idx_incident_clusters_center ON incident_clusters USING GIST(cluster_center);
+CREATE INDEX IF NOT EXISTS idx_incident_clusters_center ON incident_clusters USING GIST(cluster_center);
 
-\echo 'Spatial views created'
+-- Spatial views created
 
 -- ==================================================
 -- TRIGGERS FOR AUTOMATED TASKS
@@ -285,7 +285,7 @@ CREATE TRIGGER update_incident_reports_count_trigger
     AFTER INSERT OR DELETE ON incident_reports
     FOR EACH ROW EXECUTE FUNCTION update_incident_reports_count();
 
-\echo 'Database triggers created'
+-- Database triggers created
 
 -- ==================================================
 -- PERFORMANCE & MAINTENANCE
@@ -303,7 +303,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-\echo 'Performance optimizations applied'
+-- Performance optimizations applied
 
 -- ==================================================
 -- SECURITY SETTINGS
@@ -319,8 +319,8 @@ ALTER TABLE incident_reports ENABLE ROW LEVEL SECURITY;
 -- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO gis_app_user;
 -- GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO gis_app_user;
 
-\echo 'Security settings configured'
-\echo 'GIS-NET database initialization completed successfully!'
+-- Security settings configured
+-- GIS-NET database initialization completed successfully!
 
 -- ==================================================
 -- DATABASE STATISTICS & VERIFICATION
@@ -344,4 +344,4 @@ FROM pg_tables
 WHERE schemaname = 'public' 
     AND tablename IN ('users', 'incident_types', 'incidents', 'incident_reports', 'audit_logs');
 
-\echo 'Database verification completed!'
+-- Database verification completed!

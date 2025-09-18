@@ -63,17 +63,22 @@ const registrationLimiter = rateLimit({
   max: 3, // 3 registrations per hour per IP
   message: {
     error: 'Too many registration attempts',
-    message: 'Please wait an hour before creating another account',
-    retryAfter: '1 hour'
+    retryAfter: '1 hour',
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip,
-  onLimitReached: (req, res, options) => {
+  handler: (req, res) => {
     logger.logSecurity('registration_rate_limit_exceeded', {
       ip: req.ip,
       userAgent: req.get('User-Agent'),
+      attemptedUsername: req.body?.username,
+      attemptedEmail: req.body?.email,
     }, req);
+    
+    res.status(429).json({
+      error: 'Too many registration attempts',
+      retryAfter: '1 hour',
+    });
   },
 });
 
