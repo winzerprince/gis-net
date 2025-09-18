@@ -3,7 +3,7 @@
  */
 
 const request = require('supertest');
-const ExpressApp = require('../src/app');
+const { ExpressApp } = require('../app');
 
 describe('Backend Infrastructure Tests', () => {
   let app;

@@ -258,9 +258,18 @@ class DatabaseConnection {
   async disconnect() {
     return this.close();
   }
+
+  /**
+   * Alias for initialize() to satisfy tests expecting connect()
+   */
+  async connect() {
+    return this.initialize();
+  }
 }
 
 // Create singleton instance
 const db = new DatabaseConnection();
 
+// Export both the singleton (default) and the class constructor for tests
 module.exports = db;
+module.exports.DatabaseConnection = DatabaseConnection;

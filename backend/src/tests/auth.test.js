@@ -34,7 +34,7 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { ExpressApp } = require('../app');
-const DatabaseConnection = require('../db/connection');
+const { DatabaseConnection } = require('../db/connection');
 const AuthenticationService = require('../services/auth');
 const PasswordSecurityService = require('../services/password');
 
