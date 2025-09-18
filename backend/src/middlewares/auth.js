@@ -75,6 +75,7 @@ const authenticateToken = async (req, res, next) => {
       }, req);
       
       return res.status(401).json({
+        success: false,
         error: 'Access denied',
         message: 'Authentication token is required',
         code: 'MISSING_TOKEN',
@@ -97,6 +98,7 @@ const authenticateToken = async (req, res, next) => {
       }, req);
       
       return res.status(401).json({
+        success: false,
         error: 'Access denied',
         message: 'User account not found',
         code: 'USER_NOT_FOUND',
@@ -113,6 +115,7 @@ const authenticateToken = async (req, res, next) => {
       }, req);
       
       return res.status(401).json({
+        success: false,
         error: 'Access denied',
         message: 'Account has been deactivated',
         code: 'ACCOUNT_INACTIVE',
@@ -148,6 +151,7 @@ const authenticateToken = async (req, res, next) => {
     // Handle specific token errors
     if (error.message === 'Token expired') {
       return res.status(401).json({
+        success: false,
         error: 'Token expired',
         message: 'Please refresh your authentication token',
         code: 'TOKEN_EXPIRED',
@@ -156,6 +160,7 @@ const authenticateToken = async (req, res, next) => {
 
     if (error.message === 'Invalid token') {
       return res.status(401).json({
+        success: false,
         error: 'Invalid token',
         message: 'Authentication token is malformed or invalid',
         code: 'INVALID_TOKEN',
@@ -163,6 +168,7 @@ const authenticateToken = async (req, res, next) => {
     }
 
     return res.status(401).json({
+      success: false,
       error: 'Authentication failed',
       message: 'Unable to verify authentication token',
       code: 'AUTH_FAILED',
@@ -238,6 +244,7 @@ const requireRole = (allowedRoles = []) => {
       }, req);
       
       return res.status(401).json({
+        success: false,
         error: 'Authentication required',
         message: 'You must be logged in to access this resource',
         code: 'AUTH_REQUIRED',
@@ -254,7 +261,8 @@ const requireRole = (allowedRoles = []) => {
       }, req);
       
       return res.status(403).json({
-        error: 'Insufficient permissions',
+        success: false,
+        error: 'admin permissions required',
         message: `Access denied. Required role: ${allowedRoles.join(' or ')}`,
         code: 'INSUFFICIENT_ROLE',
       });
@@ -282,6 +290,7 @@ const requireRole = (allowedRoles = []) => {
 const requireVerifiedEmail = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
+      success: false,
       error: 'Authentication required',
       message: 'You must be logged in to access this resource',
       code: 'AUTH_REQUIRED',
@@ -296,6 +305,7 @@ const requireVerifiedEmail = (req, res, next) => {
     }, req);
     
     return res.status(403).json({
+      success: false,
       error: 'Email verification required',
       message: 'Please verify your email address to access this resource',
       code: 'EMAIL_UNVERIFIED',
@@ -317,6 +327,7 @@ const requireVerifiedEmail = (req, res, next) => {
 const requireActiveAccount = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
+      success: false,
       error: 'Authentication required',
       message: 'You must be logged in to access this resource',
       code: 'AUTH_REQUIRED',
@@ -331,6 +342,7 @@ const requireActiveAccount = (req, res, next) => {
     }, req);
     
     return res.status(403).json({
+      success: false,
       error: 'Account inactive',
       message: 'Your account has been deactivated. Please contact support.',
       code: 'ACCOUNT_INACTIVE',
@@ -351,6 +363,7 @@ const requireOwnershipOrRole = (resourceUserIdField = 'userId') => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
+        success: false,
         error: 'Authentication required',
         code: 'AUTH_REQUIRED',
       });
@@ -368,6 +381,7 @@ const requireOwnershipOrRole = (resourceUserIdField = 'userId') => {
       }, req);
       
       return res.status(403).json({
+        success: false,
         error: 'Access denied',
         message: 'You can only access your own resources',
         code: 'ACCESS_DENIED',

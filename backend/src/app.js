@@ -30,13 +30,14 @@ const { authenticateToken } = require('./middlewares/auth');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const incidentRoutes = require('./routes/incidents'); // Phase 3 - Incident Management
-// const analysisRoutes = require('./routes/analysis'); // Will be created in Phase 4
+const analysisRoutes = require('./routes/analysis'); // Phase 4 - Advanced GIS Analytics
 // const healthRoutes = require('./routes/health'); // Will be created in Phase 4
 
 class ExpressApp {
-  constructor() {
+  constructor(options = {}) {
     this.app = express();
     this.io = null; // To hold Socket.io instance
+    this.isTestMode = options.isTestMode || process.env.NODE_ENV === 'test';
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
@@ -139,8 +140,10 @@ class ExpressApp {
       next();
     });
 
-    // Rate limiting
-    this.setupRateLimiting();
+    // Rate limiting (skip in test mode)
+    if (!this.isTestMode) {
+      this.setupRateLimiting();
+    }
 
     logger.info('🛡️  Express middleware configured');
   }
@@ -288,8 +291,8 @@ class ExpressApp {
     // Incident management routes (Phase 3)
     this.app.use('/api/incidents', incidentRoutes.router);
     
-    // Routes to be added in subsequent phases
-    // this.app.use('/api/analysis', analysisRoutes);
+    // Advanced GIS analysis routes (Phase 4)
+    this.app.use('/api/analysis', analysisRoutes);
 
     // 404 handler for unknown routes
     this.app.use('*', (req, res) => {

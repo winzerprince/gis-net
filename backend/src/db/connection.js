@@ -246,6 +246,18 @@ class DatabaseConnection {
       }
     }
   }
+
+  /**
+   * Backward-compatibility aliases used by some tests/utilities
+   * end() and disconnect() both delegate to close()
+   */
+  async end() {
+    return this.close();
+  }
+
+  async disconnect() {
+    return this.close();
+  }
 }
 
 // Create singleton instance

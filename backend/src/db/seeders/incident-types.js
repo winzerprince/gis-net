@@ -35,17 +35,8 @@
  */
 
 require('dotenv').config();
-const { Pool } = require('pg');
 const logger = require('../../services/logger');
-
-class IncidentTypeSeeder {
-  constructor() {
-    this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/trafficdb',
-    });
-
 const db = require('../connection');
-const logger = require('../../services/logger');
 
 class IncidentTypeSeeder {
   constructor() {
@@ -309,15 +300,11 @@ class IncidentTypeSeeder {
     }
 
     try {
-      // Initialize pool if not done
-      if (!this.pool) {
-        await this.initialize();
+      // Initialize shared DB connection if not connected
+      if (!this.db.isConnected) {
+        await this.db.initialize();
       }
-
-      // Test connection and verify PostGIS
-      await this.verifyPostGIS();
-      
-      this.isConnected = true;
+      this.isConnected = this.db.isConnected;
       logger.info('✅ Database connection established successfully');
       
     } catch (error) {
@@ -522,7 +509,7 @@ class IncidentTypeSeeder {
    */
   async disconnect() {
     try {
-      await this.db.disconnect();
+  await this.db.close();
       logger.debug('IncidentTypeSeeder: Database disconnected');
     } catch (error) {
       logger.logError(error, null, { 
@@ -620,3 +607,4 @@ if (require.main === module) {
 }
 
 module.exports = IncidentTypeSeeder;
+ 
