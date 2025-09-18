@@ -1,0 +1,208 @@
+# ==================================================
+# GIS-NET DOCKER COMPOSE CONFIGURATION
+# Enhanced Real-Time Traffic Incident Reporting System
+# ==================================================
+#
+# This docker-compose.yml file orchestrates the complete development environment:
+# - PostgreSQL database with PostGIS extension for spatial operations
+# - Backend API server (Node.js/Express) with real-time capabilities
+# - Frontend React application with interactive GIS mapping
+# - Volume persistence for database data and hot-reload for development
+#
+# USAGE:
+# - Development: docker-compose up --build
+# - Production: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+# - Database only: docker-compose up db
+#
+# REQUIREMENTS:
+# - Docker Engine 20.10+
+# - Docker Compose 2.0+
+# - At least 2GB RAM for PostgreSQL with PostGIS
+
+version: "3.8"
+
+services:
+  # ==================================================
+  # POSTGRESQL DATABASE WITH POSTGIS EXTENSION
+  # Provides spatial database capabilities for GIS operations
+  # ==================================================
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: gis-net-database
+    restart: unless-stopped
+
+    environment:
+      # Database configuration
+      POSTGRES_DB: trafficdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+
+      # PostGIS configuration
+      POSTGIS_VERSION: 3.3
+
+      # Performance tuning for development
+      POSTGRES_SHARED_PRELOAD_LIBRARIES: "postgis"
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      # Persist database data
+      - postgres_data:/var/lib/postgresql/data
+      # Custom initialization scripts
+      - ./backend/src/db/init:/docker-entrypoint-initdb.d
+
+    networks:
+      - gis-net-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d trafficdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==================================================
+  # BACKEND API SERVER
+  # Node.js/Express API with Socket.io for real-time updates
+  # ==================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+
+    container_name: gis-net-backend
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://postgres:password@db:5432/trafficdb
+      JWT_SECRET: development_secret_change_in_production
+      CORS_ORIGIN: http://localhost:3000
+      NOMINATIM_BASE_URL: https://nominatim.openstreetmap.org
+
+    ports:
+      - "4000:4000"
+
+    volumes:
+      # Hot reload for development
+      - ./backend/src:/app/src
+      - ./backend/package.json:/app/package.json
+      - backend_node_modules:/app/node_modules
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    networks:
+      - gis-net-network
+
+    command: npm run dev
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==================================================
+  # FRONTEND REACT APPLICATION
+  # Interactive web interface with GIS mapping capabilities
+  # ==================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+
+    container_name: gis-net-frontend
+    restart: unless-stopped
+
+    environment:
+      REACT_APP_API_URL: http://localhost:4000/api
+      REACT_APP_SOCKET_URL: http://localhost:4000
+      REACT_APP_DEFAULT_LAT: 40.7128
+      REACT_APP_DEFAULT_LNG: -74.0060
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+
+    ports:
+      - "3000:3000"
+
+    volumes:
+      # Hot reload for development
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/package.json:/app/package.json
+      - frontend_node_modules:/app/node_modules
+
+    depends_on:
+      - backend
+
+    networks:
+      - gis-net-network
+
+    command: npm start
+
+    stdin_open: true
+    tty: true
+
+  # ==================================================
+  # REDIS CACHE (OPTIONAL)
+  # For caching and session management in production
+  # ==================================================
+  redis:
+    image: redis:7-alpine
+    container_name: gis-net-redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis_data:/data
+
+    networks:
+      - gis-net-network
+
+    command: redis-server --appendonly yes
+
+    profiles:
+      - production
+      - cache
+
+# ==================================================
+# DOCKER VOLUMES
+# Persistent storage for database, node_modules, and cache
+# ==================================================
+volumes:
+  postgres_data:
+    driver: local
+    name: gis-net-postgres-data
+
+  redis_data:
+    driver: local
+    name: gis-net-redis-data
+
+  backend_node_modules:
+    driver: local
+    name: gis-net-backend-modules
+
+  frontend_node_modules:
+    driver: local
+    name: gis-net-frontend-modules
+
+# ==================================================
+# DOCKER NETWORKS
+# Isolated network for service communication
+# ==================================================
+networks:
+  gis-net-network:
+    driver: bridge
+    name: gis-net-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

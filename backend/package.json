@@ -1,0 +1,99 @@
+{
+  "name": "gis-net-backend",
+  "version": "1.0.0",
+  "description": "Enhanced Real-Time Traffic Incident Reporting System - Backend API with GIS capabilities using PostgreSQL + PostGIS for spatial operations, real-time updates via Socket.io, and comprehensive authentication.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:integration": "jest --testNamePattern='integration'",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "migrate": "node src/db/migrate.js",
+    "seed": "node src/db/seed.js",
+    "db:reset": "npm run migrate && npm run seed",
+    "docker:build": "docker build -t gis-net-backend .",
+    "docker:run": "docker run -p 4000:4000 gis-net-backend"
+  },
+  "keywords": [
+    "gis",
+    "postgis",
+    "traffic",
+    "incidents",
+    "real-time",
+    "spatial-analysis",
+    "express",
+    "socket.io"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "pg": "^8.11.3",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "joi": "^17.11.0",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "express-async-errors": "^3.1.1",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "eslint": "^8.56.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.1",
+    "prettier": "^3.1.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "@types/jest": "^29.5.8",
+    "cross-env": "^7.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/server.js",
+      "!src/db/migrations/*.js"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": ["text", "lcov", "html"],
+    "testMatch": [
+      "**/__tests__/**/*.js",
+      "**/?(*.)+(spec|test).js"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winzerprince/gis-net.git"
+  },
+  "bugs": {
+    "url": "https://github.com/winzerprince/gis-net/issues"
+  },
+  "homepage": "https://github.com/winzerprince/gis-net#readme"
+}

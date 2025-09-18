@@ -1,0 +1,139 @@
+{
+  "name": "gis-net-frontend",
+  "version": "1.0.0",
+  "description": "Enhanced Real-Time Traffic Incident Reporting System - React Frontend with interactive GIS mapping, real-time updates, spatial analysis visualization using Leaflet maps, and Material-UI components.",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.1",
+    "react-leaflet": "^4.2.1",
+    "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
+    "leaflet.heat": "^0.2.0",
+    "leaflet-routing-machine": "^3.2.12",
+    "@mui/material": "^5.15.1",
+    "@mui/icons-material": "^5.15.1",
+    "@mui/x-data-grid": "^6.18.2",
+    "@mui/x-date-pickers": "^6.18.2",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@tanstack/react-query": "^5.12.2",
+    "@tanstack/react-query-devtools": "^5.13.3",
+    "socket.io-client": "^4.7.4",
+    "axios": "^1.6.2",
+    "formik": "^2.4.5",
+    "yup": "^1.3.3",
+    "react-hot-toast": "^2.4.1",
+    "date-fns": "^2.30.0",
+    "lodash.debounce": "^4.0.8",
+    "react-error-boundary": "^4.0.11"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "test:ci": "cross-env CI=true react-scripts test --coverage --watchAll=false",
+    "eject": "react-scripts eject",
+    "lint": "eslint src/**/*.{js,jsx}",
+    "lint:fix": "eslint src/**/*.{js,jsx} --fix",
+    "format": "prettier --write src/**/*.{js,jsx,css,scss}",
+    "analyze": "npm run build && npx bundle-analyzer build/static/js/*.js",
+    "docker:build": "docker build -t gis-net-frontend .",
+    "docker:run": "docker run -p 3000:3000 gis-net-frontend"
+  },
+  "devDependencies": {
+    "react-scripts": "5.0.1",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.5.1",
+    "eslint": "^8.56.0",
+    "eslint-config-react-app": "^7.0.1",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.1.1",
+    "cross-env": "^7.0.3",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "bundle-analyzer": "^0.1.0"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ],
+    "rules": {
+      "react/prop-types": "off",
+      "no-console": "warn",
+      "no-unused-vars": "warn"
+    }
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx}",
+      "!src/index.js",
+      "!src/reportWebVitals.js",
+      "!src/setupTests.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    }
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "src/**/*.{css,scss,json,md}": [
+      "prettier --write"
+    ]
+  },
+  "proxy": "http://localhost:4000",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "react",
+    "gis",
+    "leaflet",
+    "material-ui",
+    "real-time",
+    "traffic",
+    "incidents",
+    "mapping"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winzerprince/gis-net.git"
+  },
+  "bugs": {
+    "url": "https://github.com/winzerprince/gis-net/issues"
+  },
+  "homepage": "https://github.com/winzerprince/gis-net#readme"
+}
