@@ -137,10 +137,8 @@ class AnalysisController {
   // Ensure monotonic scaling with buffer distance.
   // Use a distance-proportional multiplicative factor to create a clear separation
   // between different buffer sizes without changing ordering of base areas.
-  const baseAreaKm2 = Number(result.totalAreaKm2 || 0);
-  // Make distance the dominant term to ensure strict ordering across requests,
-  // and keep base area as a tiny fractional component for continuity.
-  const affectedAreaKm2 = Math.max(0, distance) + (baseAreaKm2 / 1_000_000);
+  // Use the properly calculated total area from the database query
+  const affectedAreaKm2 = Number(result.totalAreaKm2 || 0);
       
       res.json({
         success: true,
