@@ -4,6 +4,7 @@
   "description": "Enhanced Real-Time Traffic Incident Reporting System - React Frontend with interactive GIS mapping, real-time updates, spatial analysis visualization using Leaflet maps, and Material-UI components.",
   "private": true,
   "dependencies": {
+    "@babel/runtime": "^7.28.4",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.15.1",
@@ -32,6 +33,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "dev": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "test:coverage": "react-scripts test --coverage --watchAll=false",
@@ -113,7 +115,6 @@
       "prettier --write"
     ]
   },
-
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"

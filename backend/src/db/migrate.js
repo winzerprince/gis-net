@@ -19,7 +19,8 @@ const logger = require('../services/logger');
 
 class MigrationManager {
   constructor() {
-    this.migrationsDir = path.join(__dirname, 'init');
+  this.migrationsDir = path.join(__dirname, 'init');
+  this.extraMigrationsDir = path.join(__dirname, 'migrations');
     this.migrationTable = 'schema_migrations';
   }
 
@@ -99,11 +100,14 @@ class MigrationManager {
    */
   async getMigrationFiles() {
     try {
-      const files = await fs.readdir(this.migrationsDir);
-      
+      const initFiles = await fs.readdir(this.migrationsDir).catch(err => (err.code === 'ENOENT' ? [] : Promise.reject(err)));
+      const extraFiles = await fs.readdir(this.extraMigrationsDir).catch(err => (err.code === 'ENOENT' ? [] : Promise.reject(err)));
+      const files = [...initFiles.map(f => ({ f, dir: 'init' })), ...extraFiles.map(f => ({ f, dir: 'migrations' }))];
+
       return files
-        .filter(file => file.endsWith('.sql'))
-        .sort(); // Ensures proper execution order (01-init, 02-seed, etc.)
+        .filter(file => file.f.endsWith('.sql'))
+        .sort((a, b) => a.f.localeCompare(b.f))
+        .map(entry => path.join(__dirname, entry.dir, entry.f)); // Full paths for execution
         
     } catch (error) {
       if (error.code === 'ENOENT') {
@@ -138,79 +142,136 @@ class MigrationManager {
     const startTime = Date.now();
     
     try {
-      logger.info(`🔄 Executing migration: ${filename}`);
+  const baseName = path.basename(filename);
+  logger.info(`🔄 Executing migration: ${baseName}`);
       
       // Read migration file
-      const filePath = path.join(this.migrationsDir, filename);
-      let migrationSQL = await fs.readFile(filePath, 'utf8');
+  let migrationSQL = await fs.readFile(filename, 'utf8');
       
-      // Clean up psql-specific commands that aren't valid SQL
-      const cleanSql = (sql) => {
-        return sql
-          // Remove psql commands
-          .replace(/\\(echo|set|connect|if|elif|else|endif|i|include|ir|ir_file|o|out|o|qecho|warn|copy|crosstabview).*$/gm, '')
-          // Remove comments
-          .replace(/^--.*$/gm, '')
-          // Convert CREATE TABLE to CREATE TABLE IF NOT EXISTS
-          .replace(/CREATE\s+TABLE\s+([^(]+)/gi, 'CREATE TABLE IF NOT EXISTS $1')
-          // Convert CREATE INDEX to CREATE INDEX IF NOT EXISTS
-          .replace(/CREATE\s+INDEX\s+([^(ON]+)/gi, 'CREATE INDEX IF NOT EXISTS $1')
-          // Convert CREATE EXTENSION to CREATE EXTENSION IF NOT EXISTS
-          .replace(/CREATE\s+EXTENSION\s+([^(;]+)/gi, 'CREATE EXTENSION IF NOT EXISTS $1')
-          // Remove empty lines
-          .split('\n')
-          .filter(line => line.trim() !== '')
-          .join('\n');
-      };
-      
-      migrationSQL = cleanSql(migrationSQL);
+      // No SQL cleaning for 01-init-schema.sql since it works perfectly with psql
+      // Only clean files that actually have problematic psql commands
+      if (baseName.includes('seed-data.sql') || baseName.includes('auth-tables.sql')) {
+        // Clean up psql-specific commands only for files that need it
+        migrationSQL = migrationSQL
+          .replace(/^\\echo\s+.*$/gm, '')
+          .replace(/^\\set\s+.*$/gm, '')
+          .replace(/^\\connect\s+.*$/gm, '')
+          .replace(/^\\.*$/gm, '')  // Remove any other backslash commands
+          .replace(/^\s*$/gm, '')   // Remove empty lines
+          .replace(/\n\n+/g, '\n'); // Clean up multiple newlines
+      }
       
       // Calculate checksum for integrity verification
       const checksum = this.calculateChecksum(migrationSQL);
       
       // Execute migration in transaction
       try {
-        // Execute migration in transaction
-        await db.transaction(async (client) => {
-          try {
-            // Split SQL into individual statements
-            const statements = migrationSQL
-              .split(';')
-              .map(stmt => stmt.trim())
-              .filter(stmt => stmt.length > 0);
-            
-            // Execute each statement separately for better error reporting
-            for (const statement of statements) {
-              await client.query(statement + ';');
-            }
-            
-            // Record migration execution
-            const executionTime = Date.now() - startTime;
-            await client.query(
-              `INSERT INTO ${this.migrationTable} (filename, checksum, execution_time) VALUES ($1, $2, $3)`,
-              [filename, checksum, executionTime]
-            );
-          } catch (err) {
-            // Log detailed SQL error
-            logger.error(`SQL Error in migration ${filename}: ${err.message}`);
-            logger.error(`Statement: ${err.query || 'Unknown'}`);
-            logger.error(`Position: ${err.position || 'Unknown'}`);
-            
-            // Rethrow to trigger transaction rollback
-            throw err;
+        // Since the SQL file works perfectly with psql but fails with client.query(),
+        // let's use psql command line tool to execute the migration
+        logger.debug(`Executing migration using psql command line tool...`);
+        
+        const { spawn } = require('child_process');
+        const fs = require('fs');
+        
+        try {
+          // Execute migration using psql command line tool
+          const psqlArgs = [
+            '-h', process.env.DB_HOST || 'localhost',
+            '-U', process.env.DB_USER || 'postgres', 
+            '-d', process.env.DB_NAME || 'trafficdb',
+            '-f', filename,  // Execute file directly
+            '-q'  // Quiet mode, only show errors
+          ];
+          
+          logger.debug(`Running: psql ${psqlArgs.join(' ')}`);
+          
+          const psqlProcess = spawn('psql', psqlArgs, {
+            stdio: ['inherit', 'pipe', 'pipe']
+          });
+          
+          let stdout = '';
+          let stderr = '';
+          
+          psqlProcess.stdout.on('data', (data) => {
+            stdout += data.toString();
+          });
+          
+          psqlProcess.stderr.on('data', (data) => {
+            stderr += data.toString();
+          });
+          
+          const exitCode = await new Promise((resolve) => {
+            psqlProcess.on('close', resolve);
+          });
+          
+          if (exitCode !== 0) {
+            logger.error(`psql stderr: ${stderr}`);
+            throw new Error(`psql exited with code ${exitCode}: ${stderr}`);
           }
-        });
+          
+          logger.debug(`psql stdout: ${stdout}`);
+          
+          // Record migration execution manually
+          const client = await db.pool.connect();
+          
+          try {
+            
+            // Record migration execution in migration table
+            const executionTime = Date.now() - startTime;
+            
+            // Create migration table if it doesn't exist and record this migration
+            await client.query(`
+              CREATE TABLE IF NOT EXISTS ${this.migrationTable} (
+                id SERIAL PRIMARY KEY,
+                filename VARCHAR(255) UNIQUE NOT NULL,
+                executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                checksum VARCHAR(64) NOT NULL,
+                execution_time INTEGER NOT NULL
+              )
+            `);
+            
+            await client.query(
+              `INSERT INTO ${this.migrationTable} (filename, checksum, execution_time) VALUES ($1, $2, $3) 
+               ON CONFLICT (filename) DO NOTHING`,
+              [baseName, checksum, executionTime]
+            );
+            
+            logger.debug(`Migration ${baseName} executed successfully`);
+            
+          } finally {
+            client.release();
+          }
+          
+        } catch (err) {
+          // Log detailed SQL error
+          logger.error(`SQL Error in migration ${filename}: ${err.message}`);
+          logger.error(`Statement: ${err.query || 'Unknown'}`);
+          logger.error(`Position: ${err.position || 'Unknown'}`);
+          
+          // For debugging, let's also log the character at the error position
+          if (err.position) {
+            const pos = parseInt(err.position);
+            if (pos > 0 && pos <= migrationSQL.length) {
+              const errorContext = migrationSQL.substring(Math.max(0, pos - 50), pos + 50);
+              logger.error(`Error context: ...${errorContext}...`);
+              logger.error(`Character at position ${pos}: "${migrationSQL.charAt(pos - 1)}"`);
+            }
+          }
+          
+          throw new Error(`Migration ${filename} failed: ${err.message}`);
+        }
       } catch (error) {
         // This will be caught by the outer try/catch
         throw new Error(`Migration ${filename} failed: ${error.message}`);
       }
       
       const duration = Date.now() - startTime;
-      logger.info(`✅ Migration completed: ${filename} (${duration}ms)`);
+  logger.info(`✅ Migration completed: ${baseName} (${duration}ms)`);
       
     } catch (error) {
-      logger.error(`❌ Migration failed: ${filename}`, error.message);
-      throw new Error(`Migration ${filename} failed: ${error.message}`);
+  const baseName = path.basename(filename);
+  logger.error(`❌ Migration failed: ${baseName}`, error.message);
+  throw new Error(`Migration ${baseName} failed: ${error.message}`);
     }
   }
 

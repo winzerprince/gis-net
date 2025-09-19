@@ -91,13 +91,6 @@ const incidentCreationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => `incident_create_${req.user?.id || req.ip}`,
-  onLimitReached: (req, res, options) => {
-    logger.logSecurity('incident_creation_rate_limit_exceeded', {
-      userId: req.user?.id,
-      username: req.user?.username,
-      ip: req.ip,
-    }, req);
-  },
 });
 
 // Moderate rate limiting for incident verification

@@ -177,14 +177,6 @@ class ExpressApp {
         // Skip rate limiting for health checks
         return req.path.startsWith('/api/health');
       },
-      onLimitReached: (req, res, options) => {
-        logger.logSecurity('rate_limit_exceeded', {
-          ip: req.ip,
-          path: req.path,
-          userAgent: req.get('User-Agent'),
-          userId: req.user?.id,
-        }, req);
-      },
     });
 
     // Stricter rate limit for authentication endpoints

@@ -9,7 +9,7 @@
 -- - Sample incident data for testing
 -- - Spatial data examples
 
-\echo 'Starting GIS-NET database seeding...'
+-- Starting GIS-NET database seeding...
 
 -- ==================================================
 -- INCIDENT TYPES SEED DATA
@@ -41,7 +41,7 @@ INSERT INTO incident_types (name, description, icon, color, priority) VALUES
 ('Utility Work', 'Gas, water, electric utility work', 'wrench', '#8B5CF6', 3),
 ('Parking Issue', 'Illegal parking or parking violations', 'parking', '#6B7280', 1);
 
-\echo 'Incident types seeded successfully'
+-- Incident types seeded successfully
 
 -- ==================================================
 -- ADMINISTRATIVE USER ACCOUNT
@@ -54,7 +54,7 @@ INSERT INTO users (username, email, password, role, first_name, last_name, email
 ('demo_user', 'demo@gis-net.local', '$2b$12$LQv3c1yqBwlV1q.UKM.xAePjEFA.7q/qO/7m2k2QYLrS6f1/mm1HO', 'user', 'Demo', 'User', true, true),
 ('moderator', 'mod@gis-net.local', '$2b$12$LQv3c1yqBwlV1q.UKM.xAePjEFA.7q/qO/7m2k2QYLrS6f1/mm1HO', 'moderator', 'Demo', 'Moderator', true, true);
 
-\echo 'Default users created successfully'
+-- Default users created successfully
 
 -- ==================================================
 -- SAMPLE INCIDENT DATA
@@ -113,7 +113,7 @@ UPDATE incidents SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP - INTE
                     resolved_by = 1, resolution_notes = 'Accident cleared, traffic resumed normal flow'
 WHERE id = 1;
 
-\echo 'Sample incidents created successfully'
+-- Sample incidents created successfully
 
 -- ==================================================
 -- INCIDENT REPORTS (Community Validation)
@@ -129,15 +129,16 @@ INSERT INTO incident_reports (incident_id, reported_by, report_type, notes) VALU
 (6, 1, 'confirm', 'Traffic light is definitely not working'),
 (7, 2, 'confirm', 'Saw the debris, looks like construction materials');
 
-\echo 'Community reports added successfully'
+-- Community reports added successfully
 
 -- ==================================================
 -- REFRESH MATERIALIZED VIEWS
 -- ==================================================
 
-REFRESH MATERIALIZED VIEW incident_clusters;
+-- NOTE: Materialized view refresh commented out as view may not exist yet
+-- REFRESH MATERIALIZED VIEW incident_clusters;
 
-\echo 'Materialized views refreshed'
+-- Materialized views refreshed
 
 -- ==================================================
 -- VERIFICATION & STATISTICS
@@ -177,11 +178,11 @@ SELECT
     ST_AsText(ST_Envelope(ST_Collect(location))) as bounding_box
 FROM incidents;
 
-\echo 'GIS-NET database seeding completed successfully!'
-\echo ''
-\echo 'Default login credentials:'
-\echo '  Admin: admin@gis-net.local / admin123!'
-\echo '  Demo User: demo@gis-net.local / admin123!'  
-\echo '  Moderator: mod@gis-net.local / admin123!'
-\echo ''
-\echo 'Note: Change default passwords in production!'
+-- GIS-NET database seeding completed successfully!
+-- 
+-- Default login credentials:
+--   Admin: admin@gis-net.local / admin123!
+--   Demo User: demo@gis-net.local / admin123!  
+--   Moderator: mod@gis-net.local / admin123!
+-- 
+-- Note: Change default passwords in production!

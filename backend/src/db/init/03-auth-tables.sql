@@ -12,7 +12,7 @@
 -- - Password reset token management
 -- - Password history tracking for reuse prevention
 
-\echo 'Adding authentication and security tables...'
+-- Adding authentication and security tables...
 
 -- ==================================================
 -- USER REFRESH TOKENS TABLE
@@ -34,7 +34,7 @@ CREATE INDEX idx_user_refresh_tokens_user_id ON user_refresh_tokens(user_id);
 CREATE INDEX idx_user_refresh_tokens_token_id ON user_refresh_tokens(token_id);
 CREATE INDEX idx_user_refresh_tokens_expires_at ON user_refresh_tokens(expires_at);
 
-\echo 'User refresh tokens table created'
+-- User refresh tokens table created
 
 -- ==================================================
 -- TOKEN BLACKLIST TABLE  
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS token_blacklist (
 CREATE UNIQUE INDEX idx_token_blacklist_token_id ON token_blacklist(token_id);
 CREATE INDEX idx_token_blacklist_expires_at ON token_blacklist(expires_at);
 
-\echo 'Token blacklist table created'
+-- Token blacklist table created
 
 -- ==================================================
 -- FAILED LOGIN ATTEMPTS TABLE
@@ -74,7 +74,7 @@ CREATE INDEX idx_failed_login_attempts_created_at ON failed_login_attempts(creat
 -- Compound index for efficient lockout queries
 CREATE INDEX idx_failed_login_attempts_lookup ON failed_login_attempts(identifier, created_at);
 
-\echo 'Failed login attempts table created'
+-- Failed login attempts table created
 
 -- ==================================================
 -- PASSWORD RESET TOKENS TABLE
@@ -97,7 +97,7 @@ CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)
 CREATE UNIQUE INDEX idx_password_reset_tokens_token ON password_reset_tokens(token);
 CREATE INDEX idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at);
 
-\echo 'Password reset tokens table created'
+-- Password reset tokens table created
 
 -- ==================================================
 -- USER PASSWORD HISTORY TABLE
@@ -117,7 +117,7 @@ CREATE INDEX idx_user_password_history_created_at ON user_password_history(creat
 -- Compound index for efficient history queries
 CREATE INDEX idx_user_password_history_user_created ON user_password_history(user_id, created_at DESC);
 
-\echo 'User password history table created'
+-- User password history table created
 
 -- ==================================================
 -- EMAIL VERIFICATION TOKENS TABLE
@@ -140,7 +140,7 @@ CREATE INDEX idx_email_verification_tokens_user_id ON email_verification_tokens(
 CREATE UNIQUE INDEX idx_email_verification_tokens_token ON email_verification_tokens(token);
 CREATE INDEX idx_email_verification_tokens_expires_at ON email_verification_tokens(expires_at);
 
-\echo 'Email verification tokens table created'
+-- Email verification tokens table created
 
 -- ==================================================
 -- USER SESSIONS TABLE (OPTIONAL)
@@ -164,7 +164,7 @@ CREATE UNIQUE INDEX idx_user_sessions_session_id ON user_sessions(session_id);
 CREATE INDEX idx_user_sessions_last_activity ON user_sessions(last_activity);
 CREATE INDEX idx_user_sessions_active ON user_sessions(is_active) WHERE is_active = TRUE;
 
-\echo 'User sessions table created'
+-- User sessions table created
 
 -- ==================================================
 -- SECURITY EVENTS TABLE
@@ -199,7 +199,7 @@ CREATE INDEX idx_security_events_client_ip ON security_events(client_ip);
 -- GIN index for efficient JSONB queries
 CREATE INDEX idx_security_events_data ON security_events USING GIN(event_data);
 
-\echo 'Security events table created'
+-- Security events table created
 
 -- ==================================================
 -- TRIGGERS FOR AUTOMATED SECURITY TRACKING
@@ -250,7 +250,7 @@ CREATE TRIGGER security_event_trigger
     AFTER UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION log_security_event();
 
-\echo 'Security event triggers created'
+-- Security event triggers created
 
 -- ==================================================
 -- CLEANUP FUNCTIONS
@@ -302,7 +302,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-\echo 'Cleanup functions created'
+-- Cleanup functions created
 
 -- ==================================================
 -- INITIAL DATA AND VERIFICATION
@@ -331,16 +331,15 @@ WHERE schemaname = 'public'
     AND tablename LIKE '%token%' OR tablename LIKE '%password%' OR tablename = 'security_events'
 ORDER BY tablename, attname;
 
-\echo 'Authentication and security tables setup completed successfully!'
+-- Authentication and security tables setup completed successfully!
 
 -- ==================================================
 -- PERFORMANCE RECOMMENDATIONS
 -- ==================================================
 
-\echo ''
-\echo 'Performance Recommendations:'
-\echo '1. Run cleanup_expired_security_data() daily via cron job'
-\echo '2. Monitor failed_login_attempts table size in high-traffic environments'
-\echo '3. Consider partitioning security_events table by date for large datasets'
-\echo '4. Regularly ANALYZE tables after bulk operations'
-\echo '5. Set up monitoring for suspicious authentication patterns'
+-- Performance Recommendations:
+-- 1. Run cleanup_expired_security_data() daily via cron job
+-- 2. Monitor failed_login_attempts table size in high-traffic environments
+-- 3. Consider partitioning security_events table by date for large datasets
+-- 4. Regularly ANALYZE tables after bulk operations
+-- 5. Set up monitoring for suspicious authentication patterns
