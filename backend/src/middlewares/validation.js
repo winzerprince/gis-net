@@ -79,7 +79,8 @@ const passwordValidation = Joi.string()
 const emailValidation = Joi.string()
   .email({ 
     minDomainSegments: 2,
-    tlds: { allow: ['com', 'net', 'org', 'edu', 'gov', 'mil', 'int', 'co', 'io', 'dev', 'local'] }
+    // In development, accept any TLD; in production restrict if needed
+    tlds: process.env.NODE_ENV === 'development' ? false : { allow: ['com', 'net', 'org', 'edu', 'gov', 'mil', 'int', 'co', 'io'] }
   })
   .max(255)
   .lowercase()

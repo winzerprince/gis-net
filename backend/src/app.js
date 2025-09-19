@@ -71,7 +71,13 @@ class ExpressApp {
           styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
           scriptSrc: ["'self'", "https://unpkg.com"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'"],
+          connectSrc: [
+            "'self'",
+            "http://localhost:4000",
+            "http://127.0.0.1:4000",
+            "ws://localhost:4000",
+            "ws://127.0.0.1:4000",
+          ],
           fontSrc: ["'self'"],
           objectSrc: ["'none'"],
           mediaSrc: ["'self'"],
@@ -91,10 +97,12 @@ class ExpressApp {
           process.env.CORS_ORIGIN || 'http://localhost:3000',
           'http://localhost:3000',
           'http://localhost:3001', // Alternative frontend port
+          'http://127.0.0.1:3000',
+          'http://127.0.0.1:3001',
         ];
         
         // In development, allow any localhost origin
-        if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+  if (process.env.NODE_ENV === 'development' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
           return callback(null, true);
         }
         
